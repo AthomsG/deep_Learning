@@ -9,6 +9,8 @@ import utils
 def distance(analytic_solution, model_params):
     return np.linalg.norm(analytic_solution - model_params)
 
+def Relu(x):
+    return np.clip(x, 0, None)
 
 def solve_analytically(X, y):
     """
@@ -19,8 +21,10 @@ def solve_analytically(X, y):
     This function should return a vector of size n_features (the same size as
     the weight vector in the LinearRegression class).
     """
-    raise NotImplementedError
 
+    _lambda = 1e-5
+    return np.linalg.inv( X.T @ X - _lambda*np.identity(X.shape[1] )) @ X.T @ y
+    # NÃO PERCEBO O PORQUE DA MATRIZ DIAGONAL QUASE NULA....
 
 class _RegressionModel:
     """
@@ -61,11 +65,13 @@ class LinearRegression(_RegressionModel):
         This function makes an update to the model weights (in other words,
         self.w).
         """
-        raise NotImplementedError
+
+        gradient = self.predict(x_i) - y_i
+        self.w = self.w - learning_rate*np.dot(x_i.T, gradient)
+        #raise NotImplementedError
 
     def predict(self, X):
         return np.dot(X, self.w)
-
 
 class NeuralRegression(_RegressionModel):
     """
@@ -77,7 +83,15 @@ class NeuralRegression(_RegressionModel):
         regression model (for example, there will probably be one weight
         matrix per layer of the model).
         """
-        raise NotImplementedError
+        mu    = 0.1
+        sigma = 0.1
+        #HIDDEN LAYER
+        self.w1 = np.random.normal(mu, sigma, size = (n_features, hidden))
+        self.b1 = np.zeros(hidden)
+        #OUTPUT LAYER
+        self.w2 = np.random.normal(mu, sigma, hidden)
+        self.b2 = np.zeros(1)
+        #output is a price tage
 
     def update_weight(self, x_i, y_i, learning_rate=0.001):
         """
@@ -85,7 +99,20 @@ class NeuralRegression(_RegressionModel):
 
         This function makes an update to the model weights
         """
-        raise NotImplementedError
+        # L = 1/2 || f_y ||^2
+        f_y = self.predict(x_i) - y_i
+
+        grad_b1 = (self.h1 > 0) * self.w2 * f_y
+        grad_b2 = f_y
+
+        grad_w1 = np.outer(x_i, grad_b1)
+        grad_w2 = grad_b2 * self.h1.T
+
+        self.w1 = self.w1 - learning_rate * grad_w1
+        self.w2 = self.w2 - learning_rate * grad_w2
+
+        self.b1 = self.b1 - learning_rate * grad_b1
+        self.b2 = self.b2 - learning_rate * grad_b2
 
     def predict(self, X):
         """
@@ -99,7 +126,12 @@ class NeuralRegression(_RegressionModel):
         update_weight because it returns only the final output of the network,
         not any of the intermediate values needed to do backpropagation.
         """
-        raise NotImplementedError
+        z1 = X @ self.w1 + self.b1
+        self.h1 = Relu(z1)
+
+        z2 = self.h1 @ self.w2 + self.b2
+
+        return z2
 
 
 def plot(epochs, train_loss, test_loss):
